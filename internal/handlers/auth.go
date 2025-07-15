@@ -2,14 +2,21 @@ package handlers
 
 import (
 	"auth/internal/storage"
+	"context"
 	"encoding/json"
 	"io"
 	"log/slog"
 	"net/http"
 )
 
-func Auth(w http.ResponseWriter, r *http.Request) {
-	// Читаем тело запроса
+// AuthHandler структура-обёртка над storage.ManagerDB, реализующая ServeHTTP,
+// из-за чего может использоваться в методе Handle, нужна для доступа к БД в обработчиках.
+type AuthHandler struct {
+	Mdb storage.ManagerDB
+}
+
+// ServeHTTP метод AuthHandler, для реализации интерфейса Handle
+func (a *AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "Ошибка чтения тела запросы", http.StatusBadRequest)
@@ -23,6 +30,8 @@ func Auth(w http.ResponseWriter, r *http.Request) {
 	//TODO: доделать логику (уникальные логины, отправка логина и хэша в БД)
 
 	slog.Info("Получен JSON файл", "user", user)
+
+	a.Mdb.AddUser(user, context.Background())
 
 	resp := map[string]string{
 		"message": "Регистрация успешна",

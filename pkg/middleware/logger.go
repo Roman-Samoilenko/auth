@@ -6,8 +6,6 @@ import (
 	"time"
 )
 
-type Middleware func(handlerFunc http.HandlerFunc) http.HandlerFunc
-
 // Log представляет собой структуру для логирования с JSON-тегами
 type Log struct {
 	Message    string `json:"message"`
