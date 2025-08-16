@@ -4,6 +4,7 @@ import (
 	"auth/internal/handlers"
 	"auth/internal/storage"
 	"auth/pkg/middleware"
+	"context"
 	"github.com/joho/godotenv"
 	"log/slog"
 	"net/http"
@@ -38,33 +39,41 @@ func main() {
 	default:
 		mdb = storage.NewPsql()
 	}
-	if err := mdb.Init(DBType); err != nil {
-		slog.Error("ошибка подключения к БД", err)
+	if err := mdb.Init(); err != nil {
+		slog.Error("ошибка подключения к БД", "error", err)
 		return
 	}
 
-	authHandler := &handlers.AuthHandler{Mdb: mdb}
+	authHandler := handlers.NewAuthHandler(mdb)
 	router.Handle("POST /auth", authHandler)
 
 	go func() {
-		err := server.ListenAndServe()
-		if err != nil {
-			slog.Error("Ошибка при ListenAndServe()", err)
-			return
+		slog.Info("Сервер запущен", "port", os.Getenv("SERVER_PORT"))
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			slog.Error("Ошибка при запуске сервера", "error", err)
 		}
 	}()
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt)
 
-	sign := <-stop
+	<-stop
+	slog.Info("Получен сигнал остановки, начинаем graceful shutdown")
 
-	err := mdb.Close(DBType)
-	if err != nil {
-		slog.Error("ошибка", err)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err := server.Shutdown(ctx); err != nil {
+		slog.Error("Ошибка при остановке сервера", "error", err)
 	} else {
-		slog.Info("Соединение с БД успешно разорвано")
+		slog.Info("HTTP сервер успешно остановлен")
 	}
 
-	slog.Info("Остановка graceful shutdown", "сигнал", sign)
+	if err := mdb.Close(); err != nil {
+		slog.Error("Ошибка при закрытии БД", "error", err)
+	} else {
+		slog.Info("Соединение с БД успешно закрыто")
+	}
+
+	slog.Info("Приложение успешно остановлено")
 }

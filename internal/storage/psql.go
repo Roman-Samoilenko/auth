@@ -1,45 +1,61 @@
 package storage
 
 import (
-	"context"
+	"database/sql"
 	"fmt"
 	_ "github.com/lib/pq"
-	"golang.org/x/crypto/bcrypt"
-	"log/slog"
+	"os"
 )
 
 // Psql реализация managerTable с БД PostgreSQL
 type Psql struct {
-	storage
+	BaseStorage
 }
 
 // NewPsql конструктор для Psql
 func NewPsql() *Psql {
 	return &Psql{
-		newStorage(nil),
+		BaseStorage: BaseStorage{},
 	}
 }
 
-// AddUser метод добавления пользователя в БД PostgreSQL
-func (p *Psql) AddUser(user User, ctx context.Context) error {
-	//TODO: всё писать с контекстом и исправить этот бардак
-	pass_hash, err := bcrypt.GenerateFromPassword([]byte(user.Pass), bcrypt.DefaultCost)
+// Init открывает соединение с БД и создаёт таблицу
+func (p *Psql) Init() error {
+	pass := os.Getenv("PSQL_PASS")
+	host := os.Getenv("PSQL_HOST")
+	port := os.Getenv("PSQL_PORT")
+	user := os.Getenv("PSQL_USER")
+	dbname := os.Getenv("PSQL_NAME")
+
+	reqInfo := fmt.Sprintf(
+		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+		host, port, user, pass, dbname,
+	)
+
+	var db *sql.DB
+	var err error
+	db, err = sql.Open("postgres", reqInfo)
 	if err != nil {
-		slog.Error("Ошибка при хэшировании пароля", "ошибка", err)
-		return fmt.Errorf(
-			"ошибка при хэшировании пароля: %w",
-			err,
-		)
+		return fmt.Errorf("не удалось подключиться к БД: %w", err)
 	}
-	SQLadd := "INSERT INTO users (login, pass_hash) VALUES ($1, $2)"
 
-	p.storage.db.Exec(SQLadd, user.Login, string(pass_hash))
+	if err = db.Ping(); err != nil {
+		return fmt.Errorf("БД не пингуется %w", err)
+	}
 
-	return err
-}
+	createTableSQL := `
+	CREATE TABLE IF NOT EXISTS users (
+		id SERIAL PRIMARY KEY,
+		login TEXT NOT NULL UNIQUE,
+		pass_hash TEXT NOT NULL,
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+	);`
 
-// DelUser метод удаления пользователя в БД PostgreSQL
-func (p *Psql) DelUser(login string, ctx context.Context) error {
-	//TODO implement me
-	panic("implement me")
+	if _, err := db.Exec(createTableSQL); err != nil {
+		return fmt.Errorf("ошибка при создании таблицы: %w, SQL запрос: %s", err, createTableSQL)
+	}
+
+	p.db = db
+
+	return nil
 }
