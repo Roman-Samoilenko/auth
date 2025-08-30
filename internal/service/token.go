@@ -1,9 +1,10 @@
 package service
 
 import (
-	"github.com/golang-jwt/jwt/v5"
 	"os"
 	"time"
+
+	"github.com/golang-jwt/jwt/v5"
 )
 
 func CreateJWt(login string) (string, error) {
@@ -18,6 +19,3 @@ func CreateJWt(login string) (string, error) {
 	tokenString, err := token.SignedString([]byte(secretKey))
 	return tokenString, err
 }
-
-// TODO: проверка JWT пользователя в GateWay
-// TODO: получения JWT токена клиента из кук или JSON в GateWay
