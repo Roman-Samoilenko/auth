@@ -5,12 +5,13 @@ import (
 	"auth/internal/storage"
 	"auth/pkg/middleware"
 	"context"
-	"github.com/joho/godotenv"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
 	"time"
+
+	"github.com/joho/godotenv"
 )
 
 func main() {
@@ -46,6 +47,7 @@ func main() {
 
 	authHandler := handlers.NewAuthHandler(mdb)
 	router.Handle("POST /auth", authHandler)
+	router.HandleFunc("/health", handlers.Health)
 
 	go func() {
 		slog.Info("Сервер запущен", "port", os.Getenv("SERVER_PORT"))

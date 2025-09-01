@@ -3,8 +3,10 @@ package storage
 import (
 	"database/sql"
 	"fmt"
-	_ "github.com/lib/pq"
 	"os"
+	"time"
+
+	_ "github.com/lib/pq"
 )
 
 // Psql реализация managerTable с БД PostgreSQL
@@ -36,7 +38,14 @@ func (p *Psql) Init() error {
 	var err error
 	db, err = sql.Open("postgres", reqInfo)
 	if err != nil {
-		return fmt.Errorf("не удалось подключиться к БД: %w", err)
+		for i := 0; i < 11; i++ {
+			fmt.Println("Попытка подключения к БД...")
+			time.Sleep(4 * time.Second)
+			db, err = sql.Open("postgres", reqInfo)
+		}
+		if err != nil {
+			return fmt.Errorf("ошибка при открытии БД: %w", err)
+		}
 	}
 
 	if err = db.Ping(); err != nil {
