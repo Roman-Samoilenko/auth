@@ -23,7 +23,7 @@ func NewRegHandler(mt storage.ManagerTable) *RegHandler {
 	return &RegHandler{mt: mt}
 }
 
-// ServeHTTP метод RegHandler, для реализации интерфейса Handle
+// ServeHTTP метод RegHandler, для реализации интерфейса Handle.
 func (rgh *RegHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer func(r *http.Request) {
 		r.Body.Close()
@@ -107,5 +107,4 @@ func (rgh *RegHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	slog.Info("пользователь успешно зарегистрирован",
 		"логин", user.Login,
 		"handler", "reg")
-	return
 }

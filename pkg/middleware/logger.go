@@ -8,6 +8,7 @@ import (
 
 type responseWriter struct {
 	http.ResponseWriter
+
 	statusCode int
 	written    bool
 }
@@ -18,7 +19,6 @@ func (rw *responseWriter) WriteHeader(statusCode int) {
 		rw.written = true
 	}
 	rw.ResponseWriter.WriteHeader(statusCode)
-
 }
 
 func (rw *responseWriter) Write(b []byte) (int, error) {

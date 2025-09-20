@@ -26,7 +26,7 @@ func NewAuthHandler(mt storage.ManagerTable) *AuthHandler {
 // при получении логина и пароля, если логина нет в БД, то говорим что такого сочетания нет и предлагаем зарегистрироваться,
 // если логин есть, то проверяем пароль, если верный, то возвращаем JWT токен, иначе ошибку.
 
-// ServeHTTP метод AuthHandler, для реализации интерфейса Handle
+// ServeHTTP метод AuthHandler, для реализации интерфейса Handle.
 func (a *AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer func(r *http.Request) {
 		r.Body.Close()
@@ -97,5 +97,4 @@ func (a *AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	slog.Info("пользователь успешно авторизован",
 		"логин", user.Login,
 		"handler", "auth")
-	return
 }

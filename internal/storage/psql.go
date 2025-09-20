@@ -9,19 +9,19 @@ import (
 	_ "github.com/lib/pq"
 )
 
-// Psql реализация managerTable с БД PostgreSQL
+// Psql реализация managerTable с БД PostgreSQL.
 type Psql struct {
 	BaseStorage
 }
 
-// NewPsql конструктор для Psql
+// NewPsql конструктор для Psql.
 func NewPsql() *Psql {
 	return &Psql{
 		BaseStorage: BaseStorage{},
 	}
 }
 
-// Init открывает соединение с БД и создаёт таблицу
+// Init открывает соединение с БД и создаёт таблицу.
 func (p *Psql) Init() error {
 	pass := os.Getenv("PSQL_PASS")
 	host := os.Getenv("PSQL_HOST")
@@ -38,7 +38,7 @@ func (p *Psql) Init() error {
 	var err error
 	db, err = sql.Open("postgres", reqInfo)
 	if err != nil {
-		for i := 0; i < 11; i++ {
+		for range 11 {
 			fmt.Println("Попытка подключения к БД...")
 			time.Sleep(4 * time.Second)
 			db, err = sql.Open("postgres", reqInfo)
