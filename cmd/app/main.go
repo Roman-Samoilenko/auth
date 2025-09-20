@@ -46,7 +46,9 @@ func main() {
 	}
 
 	authHandler := handlers.NewAuthHandler(mdb)
+	regHandler := handlers.NewRegHandler(mdb)
 	router.Handle("POST /auth", authHandler)
+	router.Handle("POST /reg", regHandler)
 	router.HandleFunc("/health", handlers.Health)
 
 	go func() {

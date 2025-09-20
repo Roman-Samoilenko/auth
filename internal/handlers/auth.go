@@ -3,6 +3,7 @@ package handlers
 import (
 	"auth/internal/service"
 	"auth/internal/storage"
+	. "auth/pkg"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -22,6 +23,9 @@ func NewAuthHandler(mt storage.ManagerTable) *AuthHandler {
 	return &AuthHandler{mt: mt}
 }
 
+// при получении логина и пароля, если логина нет в БД, то говорим что такого сочетания нет и предлагаем зарегистрироваться,
+// если логин есть, то проверяем пароль, если верный, то возвращаем JWT токен, иначе ошибку.
+
 // ServeHTTP метод AuthHandler, для реализации интерфейса Handle
 func (a *AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer func(r *http.Request) {
@@ -40,7 +44,7 @@ func (a *AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			"ошибка", err,
 			"логин", "",
 			"handler", "auth")
-		reply(w, "Ошибка чтения тела запросы", "", "")
+		Reply(w, "Ошибка чтения тела запросы", "", "")
 		return
 	}
 	var user storage.User
@@ -49,7 +53,7 @@ func (a *AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			"ошибка", err,
 			"логин", user.Login,
 			"handler", "auth")
-		reply(w, "Ошибка при получении данных пользователя", "", "")
+		Reply(w, "Ошибка при получении данных пользователя", "", "")
 		return
 	}
 
@@ -59,30 +63,12 @@ func (a *AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			"ошибка", err,
 			"логин", user.Login,
 			"handler", "auth")
-		reply(w, fmt.Sprintf("ошибка: %w при проверки сущ. пользователя: %s", err, user.Login), user.Login, "")
+		Reply(w, fmt.Sprintf("ошибка: %w при проверки сущ. пользователя: %s", err, user.Login), user.Login, "")
 		return
 	}
 	if !exist {
-		if err := a.mt.AddUser(ctx, user); err != nil {
-			slog.Error("ошибка добавления логина",
-				"ошибка", err,
-				"логин", user.Login,
-				"handler", "auth")
-			reply(w, fmt.Sprintf("ошибка: %w добавления логина: %s", err, user.Login), user.Login, "")
-			return
-		}
-
-		strToken, err := service.CreateJWt(user.Login)
-		if err != nil {
-			slog.Error("ошибка подписания JWT токена",
-				"ошибка", err,
-				"логин", user.Login,
-				"handler", "auth")
-			reply(w, fmt.Sprintf("ошибка подписания JWT токена: %w", err), user.Login, strToken)
-			return
-		}
-		reply(w, "Регистрация успешна", user.Login, strToken)
-
+		Reply(w, "такого сочетания пароля и логина нет", user.Login, "")
+		return
 	} else {
 		correct, err := a.mt.CheckPassHash(ctx, user.Pass, user.Login)
 		if err != nil {
@@ -90,11 +76,11 @@ func (a *AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				"ошибка", err,
 				"логин", user.Login,
 				"handler", "auth")
-			reply(w, fmt.Sprintf("ошибка проверка пароля: %w", err), user.Login, "")
+			Reply(w, fmt.Sprintf("ошибка проверка пароля: %w", err), user.Login, "")
 			return
 		}
 		if !correct {
-			reply(w, "неправильный пароль для этого логина", user.Login, "")
+			Reply(w, "неправильный пароль для этого логина", user.Login, "")
 			return
 		}
 		strToken, err := service.CreateJWt(user.Login)
@@ -103,32 +89,13 @@ func (a *AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				"ошибка", err,
 				"логин", user.Login,
 				"handler", "auth")
-			reply(w, fmt.Sprintf("ошибка подписания JWT токена: %w", err), user.Login, strToken)
+			Reply(w, fmt.Sprintf("ошибка подписания JWT токена: %w", err), user.Login, strToken)
 			return
 		}
-		reply(w, "вход успешен", user.Login, strToken)
+		Reply(w, "вход успешен", user.Login, strToken)
 	}
+	slog.Info("пользователь успешно авторизован",
+		"логин", user.Login,
+		"handler", "auth")
 	return
-}
-
-func reply(w http.ResponseWriter, msg string, login string, strToken string) {
-	resp := map[string]string{
-		"message": msg,
-		"login":   login,
-		"token":   strToken,
-	}
-
-	http.SetCookie(w, &http.Cookie{
-		Name:     "auth_token",
-		Value:    strToken,
-		HttpOnly: true,
-		SameSite: http.SameSiteStrictMode,
-		Path:     "/",
-		MaxAge:   3600,
-	})
-
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		http.Error(w, "Ошибка создания ответа", http.StatusInternalServerError)
-	}
 }
