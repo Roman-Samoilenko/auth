@@ -69,6 +69,16 @@ func (rgh *RegHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if len(user.Pass) < 5 {
+		Reply(w, "пароль должен быть не менее 5 символов", user.Login, "")
+		return
+	}
+
+	if len(user.Login) < 3 {
+		Reply(w, "логин должен быть не менее 3 символов", user.Login, "")
+		return
+	}
+
 	err = rgh.mt.AddUser(ctx, user)
 	if err != nil {
 		slog.Error("ошибка добавления логина",
